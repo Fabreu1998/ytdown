@@ -1,0 +1,74 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import os
+import subprocess
+import requests
+from bs4 import BeautifulSoup
+
+class TwitterVideoDownloaderApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Twitter Video Downloader")
+        
+        self.link_label = ttk.Label(root, text="Link do vídeo:")
+        self.link_label.grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        
+        self.link_entry = ttk.Entry(root, width=50)
+        self.link_entry.grid(row=0, column=1, columnspan=2, padx=5, pady=5, sticky="we")
+        
+        self.quality_label = ttk.Label(root, text="Qualidade:")
+        self.quality_label.grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        
+        self.quality_combo = ttk.Combobox(root, values=["Alta", "Média", "Baixa"])
+        self.quality_combo.grid(row=1, column=1, columnspan=2, padx=5, pady=5, sticky="we")
+        self.quality_combo.current(0)
+        
+        self.save_label = ttk.Label(root, text="Salvar em:")
+        self.save_label.grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        
+        self.save_entry = ttk.Entry(root, width=50)
+        self.save_entry.grid(row=2, column=1, columnspan=2, padx=5, pady=5, sticky="we")
+        
+        self.download_button = ttk.Button(root, text="Baixar", command=self.download_video)
+        self.download_button.grid(row=3, column=1, columnspan=2, padx=5, pady=5, sticky="we")
+        
+    def download_video(self):
+        link = self.link_entry.get()
+        quality = self.quality_combo.get()
+        save_path = self.save_entry.get()
+        
+        if not link:
+            self.show_message("Erro", "Por favor, insira o link do vídeo.")
+            return
+        
+        try:
+            # Fazendo a requisição para a página do Twitter
+            response = requests.get(link)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Encontrando a tag de vídeo
+            video_tag = soup.find('meta', property='twitter:player:stream')
+            if video_tag:
+                video_url = video_tag['content']
+                # Definindo a qualidade do vídeo
+                if quality == "Alta":
+                    video_url = video_url.replace("variants=1", "variants=2")
+                elif quality == "Média":
+                    video_url = video_url.replace("variants=1", "variants=3")
+                
+                # Baixando o vídeo
+                video_filename = os.path.join(save_path, "video.mp4")
+                subprocess.run(['wget', '-O', video_filename, video_url])
+                self.show_message("Sucesso", "Vídeo baixado com sucesso.")
+            else:
+                self.show_message("Erro", "Não foi possível encontrar o vídeo.")
+        except Exception as e:
+            self.show_message("Erro", f"Ocorreu um erro: {str(e)}")
+            
+    def show_message(self, title, message):
+        messagebox.showinfo(title, message)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = TwitterVideoDownloaderApp(root)
+    root.mainloop()
